@@ -1,0 +1,28 @@
+# Runtime data
+data/
+backups/
+ACESSO_REDE.txt
+*.db
+*.sqlite
+*.sqlite3
+*.log
+
+# Local configuration / secrets
+.env
+.env.*
+!*.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Update packages
+*.zip
