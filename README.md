@@ -21,28 +21,25 @@ The system was created for an operational environment where schedules need to re
 
 This repository is a **sanitized portfolio edition** using synthetic employees and no production database.
 
-## Main features
+## Public portfolio features
 
 - automatic multi-week schedule generation;
 - 5x2-oriented workload validation;
-- maximum consecutive-work-day protection;
-- dedicated weekend rotation for N2/on-call roles;
-- balanced Saturday/Sunday coverage for the general team;
-- controlled weekend duty swaps with weekday compensation;
-- manual Work / Off / Vacation / Leave adjustments;
-- two operational departments with permission-aware switching;
-- per-user schedule visibility;
-- role-based permissions for schedule, team, users and departments;
+- maximum six consecutive work days;
+- dedicated N2 Saturday/Sunday rotation;
+- balanced general-team weekend coverage;
+- periodic full-weekend-off rotation;
+- controlled manual Work / Off / Vacation / Leave adjustments;
+- department-aware schedule views;
+- role-based access checks;
 - PBKDF2 password hashing and session tokens;
-- first-access / password-reset token flow;
-- optional local Outlook e-mail delivery;
-- scheduled break reminders with acknowledgement;
-- audit trail for administrative changes;
-- local SQLite backup and restore;
-- Excel-compatible schedule export;
-- optional employee-directory synchronization from another SQLite database;
-- ZIP-based local update workflow;
-- LAN-friendly local deployment.
+- audit trail for schedule and administrative changes;
+- local SQLite backup creation;
+- CSV/Excel-compatible schedule export;
+- LAN-friendly local deployment;
+- synthetic seed data for a fresh demo database.
+
+The original operational prototype also evolved around break reminders, richer user administration, external directory synchronization, duty swaps and local update flows. Private integration details and production-specific routines are intentionally not shipped in this public edition.
 
 ## Architecture
 
@@ -56,10 +53,11 @@ Browser
   ▼
 Python ThreadingHTTPServer
   │
-  ├── authentication / permissions
-  ├── schedule generation engine
-  ├── audit + backup + update APIs
-  └── optional directory sync
+  ├── authenticated API
+  ├── permission checks
+  ├── scheduler_engine.py
+  ├── audit / backup / export
+  └── local static hosting
   │
   ▼
 SQLite
@@ -71,36 +69,29 @@ SQLite
   └── settings
 ```
 
-The project intentionally uses the Python standard library for most of the backend, which keeps local deployment lightweight.
+The backend intentionally relies mostly on the Python standard library, keeping the local deployment lightweight.
 
-## Scheduling rules represented
+## Scheduling engine
 
-The portfolio baseline includes rules for:
+The public engine models:
 
-- five working days per week;
+- five working days per complete week;
 - two weekly days off;
 - no more than six consecutive working days;
 - one N2/on-call worker on Saturday and another on Sunday;
-- weekday compensation for N2 weekend duty;
-- equalized general-team weekend coverage;
-- periodic full weekends off based on rotation history;
-- cancellation of automatic generation when validation detects coverage or rest violations.
+- weekday compensation for employees who cover the weekend;
+- equalized general-team Saturday/Sunday coverage;
+- one rotating full weekend off for the general team;
+- shift-aware balancing when choosing weekend groups;
+- validation before the generated result is accepted.
 
-These rules are examples of an operational scheduling model and should be adapted to local labor rules and company policy before real-world use.
+The engine lives in [`scheduler_engine.py`](scheduler_engine.py), separated from HTTP and persistence code so the rules can be tested independently.
+
+These rules represent one operational scheduling model and should be adapted to applicable labor rules and company policy before real-world use.
 
 ## Run locally
 
-```bash
-python server.py
-```
-
-The server defaults to:
-
-```text
-http://localhost:8766
-```
-
-For a fresh portfolio database, set the administrator password before starting:
+Requires **Python 3.11+** and no third-party packages.
 
 ### Windows PowerShell
 
@@ -109,17 +100,45 @@ $env:ESCALA_ADMIN_PASSWORD="choose-a-strong-password"
 python server.py
 ```
 
-If the variable is omitted, the application creates a random temporary password and prints it once in the terminal.
+Then open:
+
+```text
+http://localhost:8766
+```
+
+If `ESCALA_ADMIN_PASSWORD` is omitted on a fresh database, the server generates a temporary administrator password and prints it once in the terminal.
+
+The default username is:
+
+```text
+admin
+```
+
+## Tests
+
+Run the scheduling-engine tests with:
+
+```bash
+python -m unittest -v tests/test_scheduler_engine.py
+```
+
+The portfolio build includes tests for:
+
+- 5x2 distribution across complete weeks;
+- one N2 worker on Saturday and one on Sunday;
+- rejection of an invalid team shape.
 
 ## Optional configuration
 
-Copy `.env.example` values into your environment as needed.
+See [`.env.example`](.env.example).
 
-`CENTRAL_DB_PATH` enables the optional read-only employee synchronization flow against another local SQLite source.
+`SCHEDULE_CUTOFF` protects historical dates from manual modification.
 
-`SCHEDULE_CUTOFF` can protect historical dates from manual modification.
+`NEW_SCHEDULE_START` sets the earliest date accepted by automatic generation.
 
-`NEW_SCHEDULE_START` controls the earliest date accepted by the generator.
+`ESCALA_PORT` changes the local HTTP port.
+
+The original implementation supported an optional external SQLite employee directory. `CENTRAL_DB_PATH` remains documented as a deployment seam, but the private synchronization routine is not included in the portfolio build.
 
 ## Privacy
 
@@ -129,16 +148,17 @@ The public repository does **not** include:
 - real e-mail addresses;
 - production schedules;
 - company databases;
-- session/password-reset tokens;
+- live session/password-reset tokens;
 - production backup files;
 - hard-coded administrator credentials;
-- private network addresses.
+- private network addresses;
+- private integration paths.
 
 See [`PORTFOLIO_EDITION.md`](PORTFOLIO_EDITION.md).
 
 ## Baseline
 
-Portfolio baseline: **2.7.4**
+Portfolio baseline derived from **2.7.4**.
 
 ---
 
